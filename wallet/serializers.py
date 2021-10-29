@@ -6,10 +6,4 @@ from .models import Wallet
 class WalletSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wallet
-        fields = "__all__"
-
-
-class ChargeWalletSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Wallet
         fields = ['balance']
