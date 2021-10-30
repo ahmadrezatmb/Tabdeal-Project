@@ -11,7 +11,7 @@ class Wallet(models.Model):
     def __str__(self) -> str:
         return f'{self.owner}\'s wallet'
 
-    def add_balance(self, amount) -> bool:
+    def add_balance(self, amount):
         self.balance = self.balance + amount
         return self.save()
 
