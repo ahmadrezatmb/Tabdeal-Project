@@ -36,3 +36,41 @@ class TestView(TestAPI):
         # simple get balance api check
         res = self.client.get(self.get_balance_check_url(this_wallet))
         self.assertEqual(res.data.get('balance'), 0)
+
+    def test_many_user_charge(self):
+        # charging all wallets
+        data = {"balance": "100"}
+        for user in self.users:
+            res = self.client.post(
+                self.get_charge_url(user.wallet_set.get()), data, format="json")
+            self.assertEqual(user.wallet_set.get().balance, 100)
+
+    def test_many_user_buy(self):
+        # first we must charge all wallets
+        data = {"balance": "100"}
+        for user in self.users:
+            res = self.client.post(
+                self.get_charge_url(user.wallet_set.get()), data, format="json")
+            self.assertEqual(user.wallet_set.get().balance, 100)
+            self.assertEqual(res.data, {'balance': 100.0})
+        # buying with all users
+        for user in self.users:
+            res = self.client.post(
+                self.get_buy_url(user.wallet_set.get()), data, format="json")
+            this_wallet = user.wallet_set.get()
+            self.assertEqual(this_wallet.balance, 0)
+            self.assertEqual(this_wallet.purchase_set.all().count(), 1)
+            self.assertEqual(res.data, {"balance": 0})
+
+    def test_response_data(self):
+        # checking charge response data
+        this_user = self.users[0]
+        data = {"balance": "100.01"}
+        res = self.client.post(
+            self.get_charge_url(this_user.wallet_set.get()), data, format="json")
+        self.assertEqual(res.data, {"balance": 100.01})
+
+        # checking buy response data
+        res = self.client.post(
+            self.get_buy_url(this_user.wallet_set.get()), data, format="json")
+        self.assertEqual(res.data, {"balance": 0})
