@@ -12,15 +12,18 @@ class TestAPI(APITestCase):
         self.users = []
         self.wallets = []
         self.faker = Faker()
-
-        for i in range(100):
+        self.user_counts = 500
+        for i in range(self.user_counts):
             new_user = User.objects.create(
-                username=self.faker.email(), password="1234")
+                username=self.faker.email() + str(i), password="1234")
             self.users.append(new_user)
             new_wallet = Wallet.objects.create(owner=new_user, balance=0)
             self.wallets.append(new_wallet)
         return super().setUp()
-    # url for endpoints
+
+    '''
+        url for endpoints
+    '''
 
     def get_buy_url(self, wallet):
         return reverse('buy', kwargs={'pk': wallet.id})

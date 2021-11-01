@@ -2,8 +2,6 @@ from rest_framework import status
 from .test_setup import TestAPI
 from wallet.models import Charge, Purchase, Wallet
 import random
-# import pdb
-# pdb.set_trace()
 
 
 class TestView(TestAPI):
@@ -55,7 +53,7 @@ class TestView(TestAPI):
             self.assertEqual(res.data, {'balance': 100.0})
 
         charge_instances = Charge.objects.all()
-        self.assertEqual(charge_instances.count(), 100)
+        self.assertEqual(charge_instances.count(), self.user_counts)
 
         # buying with all users
         for user in self.users:
@@ -67,7 +65,7 @@ class TestView(TestAPI):
             self.assertEqual(res.data, {"balance": 0})
 
         charge_instances = Purchase.objects.all()
-        self.assertEqual(charge_instances.count(), 100)
+        self.assertEqual(charge_instances.count(), self.user_counts)
 
     def test_response_data(self):
         # checking charge response data
@@ -99,7 +97,7 @@ class TestView(TestAPI):
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, data)
-        self.assertEqual(Charge.objects.all().count(), 100)
+        self.assertEqual(Charge.objects.all().count(), self.user_counts)
 
         # buying
         for user in self.users:
@@ -113,10 +111,26 @@ class TestView(TestAPI):
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, {'balance': 0})
-        self.assertEqual(Purchase.objects.all().count(), 100)
+        self.assertEqual(Purchase.objects.all().count(), self.user_counts)
 
         # checking balance
         for user in self.users:
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, {'balance': 0})
+
+    def test_empty_wallet_buy(self):
+        for user in self.users:
+            data = {
+                'balance': 100
+            }
+            res = self.client.post(
+                self.get_buy_url(user.wallet_set.get()), data, format="json")
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+            res = self.client.get(
+                self.get_balance_check_url(user.wallet_set.get()), format="json")
+            self.assertEqual(res.data, {'balance': 0})
+
+        self.assertEqual(Purchase.objects.all().count(), 0)
+        self.assertEqual(Charge.objects.all().count(), 0)
+        self.assertEqual(Wallet.objects.all().count(), self.user_counts)
