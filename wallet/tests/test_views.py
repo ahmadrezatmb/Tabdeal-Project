@@ -2,6 +2,7 @@ from rest_framework import status
 from .test_setup import TestAPI
 from wallet.models import Charge, Purchase, Wallet
 import random
+import threading
 
 
 class TestView(TestAPI):
@@ -197,3 +198,155 @@ class TestView(TestAPI):
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, {'balance': 0})
+
+    def test_multithreading_charge_then_buy(self):
+        # first we must charge all wallets
+        threads = []
+        data = {"balance": "100"}
+        for user in self.users:
+            threads.append(
+                threading.Thread(
+                    target=self._charge_for_specific_user(user, data), name="t1")
+            )
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        # start buying
+        threads.clear()
+        for user in self.users:
+            threads.append(
+                threading.Thread(
+                    target=self._buy_for_specific_user(user, data), name="t1")
+            )
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        purchase_instances = Purchase.objects.all()
+        self.assertEqual(purchase_instances.count(), self.user_counts)
+
+        for buy in purchase_instances:
+            self.assertEqual(buy.cost, 100)
+
+    def test_multithreading_shop_scenario_one(self):
+        """
+            1 - buying with empty wallet
+            2 - checking balance
+            3 - charging
+            4 - buying 
+            5 - checking balance
+        """
+        threads = []
+
+        # buying with empty wallet
+        for user in self.users:
+            data = {
+                'balance': random.randint(1, 13000)
+            }
+            threads.append(
+                threading.Thread(
+                    target=self._buy_for_specific_user(user, data), name="t1")
+            )
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(Purchase.objects.all().count(), 0)
+        self.assertEqual(Charge.objects.all().count(), 0)
+
+        # checking balance
+        threads.clear()
+        for user in self.users:
+            threads.append(
+                threading.Thread(
+                    target=self._get_balance_for_specific_user(user), name="t1")
+            )
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+        self.assertEqual(Purchase.objects.all().count(), 0)
+        self.assertEqual(Charge.objects.all().count(), 0)
+
+        # charging
+        threads.clear()
+        data = {"balance": "100"}
+        for user in self.users:
+            threads.append(
+                threading.Thread(
+                    target=self._charge_for_specific_user(user, data), name="t1")
+            )
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        wallets = Wallet.objects.all()
+        for wallet in wallets:
+            self.assertEqual(wallet.balance, 100)
+        self.assertEqual(Charge.objects.all().count(), self.user_counts)
+
+        # buying
+        threads.clear()
+        data = {"balance": "50"}
+        for user in self.users:
+            threads.append(
+                threading.Thread(
+                    target=self._buy_for_specific_user(user, data), name="t1")
+            )
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        wallets = Wallet.objects.all()
+        for wallet in wallets:
+            self.assertEqual(wallet.balance, 50)
+        self.assertEqual(Purchase.objects.all().count(), self.user_counts)
+
+        threads.clear()
+        for user in self.users:
+            threads.append(
+                threading.Thread(
+                    target=self._get_balance_for_specific_user(user), name="t1")
+            )
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+        self.assertEqual(Purchase.objects.all().count(), self.user_counts)
+        self.assertEqual(Charge.objects.all().count(), self.user_counts)
+
+    def test_multithreading_for_one_user(self):
+        this_user = self.users[0]
+        data = {
+            'balance': 100
+        }
+        t1 = threading.Thread(
+            target=self._charge_for_specific_user(this_user, data), name="t1")
+        t2 = threading.Thread(
+            target=self._charge_for_specific_user(this_user, data), name="t1")
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        self.assertEqual(this_user.wallet_set.get().balance, 200)
