@@ -93,9 +93,9 @@ class TestView(TestAPI):
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, {'balance': 0})
 
-        self.assertEqual(Purchase.objects.all().count(), 0)
-        self.assertEqual(Charge.objects.all().count(), 0)
-        self.assertEqual(Wallet.objects.all().count(), self.user_counts)
+        self.assertEqual(Purchase.objects.count(), 0)
+        self.assertEqual(Charge.objects.count(), 0)
+        self.assertEqual(Wallet.objects.count(), self.user_counts)
 
     def test_random_shop_scenario_one(self):
         """
@@ -114,7 +114,7 @@ class TestView(TestAPI):
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, data)
-        self.assertEqual(Charge.objects.all().count(), self.user_counts)
+        self.assertEqual(Charge.objects.count(), self.user_counts)
 
         # buying
         for user in self.users:
@@ -128,7 +128,7 @@ class TestView(TestAPI):
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, {'balance': 0})
-        self.assertEqual(Purchase.objects.all().count(), self.user_counts)
+        self.assertEqual(Purchase.objects.count(), self.user_counts)
 
         # checking balance
         for user in self.users:
@@ -156,9 +156,9 @@ class TestView(TestAPI):
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, {'balance': 0})
 
-        self.assertEqual(Purchase.objects.all().count(), 0)
-        self.assertEqual(Charge.objects.all().count(), 0)
-        self.assertEqual(Wallet.objects.all().count(), self.user_counts)
+        self.assertEqual(Purchase.objects.count(), 0)
+        self.assertEqual(Charge.objects.count(), 0)
+        self.assertEqual(Wallet.objects.count(), self.user_counts)
 
         # checking balance
         for user in self.users:
@@ -177,7 +177,7 @@ class TestView(TestAPI):
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, data)
-        self.assertEqual(Charge.objects.all().count(), self.user_counts)
+        self.assertEqual(Charge.objects.count(), self.user_counts)
 
         # buying
         for user in self.users:
@@ -191,7 +191,7 @@ class TestView(TestAPI):
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, {'balance': 0})
-        self.assertEqual(Purchase.objects.all().count(), self.user_counts)
+        self.assertEqual(Purchase.objects.count(), self.user_counts)
 
         # checking balance
         for user in self.users:
@@ -261,8 +261,8 @@ class TestView(TestAPI):
         for thread in threads:
             thread.join()
 
-        self.assertEqual(Purchase.objects.all().count(), 0)
-        self.assertEqual(Charge.objects.all().count(), 0)
+        self.assertEqual(Purchase.objects.count(), 0)
+        self.assertEqual(Charge.objects.count(), 0)
 
         # checking balance
         threads.clear()
@@ -277,8 +277,8 @@ class TestView(TestAPI):
 
         for thread in threads:
             thread.join()
-        self.assertEqual(Purchase.objects.all().count(), 0)
-        self.assertEqual(Charge.objects.all().count(), 0)
+        self.assertEqual(Purchase.objects.count(), 0)
+        self.assertEqual(Charge.objects.count(), 0)
 
         # charging
         threads.clear()
@@ -298,7 +298,7 @@ class TestView(TestAPI):
         wallets = Wallet.objects.all()
         for wallet in wallets:
             self.assertEqual(wallet.balance, 100)
-        self.assertEqual(Charge.objects.all().count(), self.user_counts)
+        self.assertEqual(Charge.objects.count(), self.user_counts)
 
         # buying
         threads.clear()
@@ -318,7 +318,7 @@ class TestView(TestAPI):
         wallets = Wallet.objects.all()
         for wallet in wallets:
             self.assertEqual(wallet.balance, 50)
-        self.assertEqual(Purchase.objects.all().count(), self.user_counts)
+        self.assertEqual(Purchase.objects.count(), self.user_counts)
 
         threads.clear()
         for user in self.users:
@@ -332,8 +332,8 @@ class TestView(TestAPI):
 
         for thread in threads:
             thread.join()
-        self.assertEqual(Purchase.objects.all().count(), self.user_counts)
-        self.assertEqual(Charge.objects.all().count(), self.user_counts)
+        self.assertEqual(Purchase.objects.count(), self.user_counts)
+        self.assertEqual(Charge.objects.count(), self.user_counts)
 
     def test_multithreading_for_one_user(self):
         """
@@ -383,8 +383,8 @@ class TestView(TestAPI):
         t3.join()
 
         self.assertEqual(this_user.wallet_set.get().balance, 100)
-        self.assertEqual(Purchase.objects.all().count(), 1)
-        self.assertEqual(Charge.objects.all().count(), 2)
+        self.assertEqual(Purchase.objects.count(), 1)
+        self.assertEqual(Charge.objects.count(), 2)
 
     def test_multithreading_buy_and_charge_for_many_user(self):
         """
@@ -410,7 +410,7 @@ class TestView(TestAPI):
         wallets = Wallet.objects.all()
         for wallet in wallets:
             self.assertEqual(wallet.balance, 1000)
-        self.assertEqual(Charge.objects.all().count(), self.user_counts)
+        self.assertEqual(Charge.objects.count(), self.user_counts)
 
         # buying and charging at the same time
 
@@ -439,3 +439,35 @@ class TestView(TestAPI):
             self.assertEqual(charge.amount, 1000)
         for wallet in wallet_instances:
             self.assertEqual(wallet.balance, 2000 - 401.23)
+
+    def test_charging_wallet_and_buy_100_times(self):
+        """
+            charging and buying for 1 user about 100 times
+        """
+
+        threads = []
+        this_user = self.users[12]
+
+        # charging
+        for i in range(100):
+            threads.append(threading.Thread(
+                target=self._charge_for_specific_user(this_user, {'balance': 240.5})))
+            threads[i].start()
+        for i in range(100):
+            threads[i].join()
+        this_wallet = this_user.wallet_set.get()
+
+        self.assertEqual(this_wallet.balance, 100 * 240.5)
+        self.assertEqual(Charge.objects.count(), 100)
+
+        # buying
+        threads.clear()
+        for i in range(100):
+            threads.append(threading.Thread(
+                target=self._buy_for_specific_user(this_user, {'balance': 240.5})))
+            threads[i].start()
+        for i in range(100):
+            threads[i].join()
+
+        self.assertEqual(Purchase.objects.count(), 100)
+        self.assertEqual(this_user.wallet_set.get().balance, 0)
