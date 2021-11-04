@@ -5,15 +5,15 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 from wallet.models import Wallet
 from faker import Faker
+from django.test import TransactionTestCase
 
-
-class TestAPI(APITestCase):
+class TestAPI(TransactionTestCase):
     def setUp(self) -> None:
         self.client = Client()
         self.users = []
         self.wallets = []
         self.faker = Faker()
-        self.user_counts = 300
+        self.user_counts = 100
         for i in range(self.user_counts):
             new_user = User.objects.create(
                 username=self.faker.email() + str(i), password="1234")

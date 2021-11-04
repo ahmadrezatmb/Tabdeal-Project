@@ -3,7 +3,8 @@ from .test_setup import TestAPI
 from wallet.models import Charge, Purchase, Wallet
 import random
 import threading
-
+from multiprocessing import Process
+from django.db import transaction
 
 class TestView(TestAPI):
     def test_regular_buy_charge_getBalance(self):
@@ -198,20 +199,19 @@ class TestView(TestAPI):
             res = self.client.get(
                 self.get_balance_check_url(user.wallet_set.get()), format="json")
             self.assertEqual(res.data, {'balance': 0})
-
+    
     def test_multithreading_charge_then_buy(self):
         # first we must charge all wallets
         threads = []
         data = {"balance": "100"}
+        
         for user in self.users:
-            threads.append(
-                threading.Thread(
-                    target=self._charge_for_specific_user(user, data), name="t1")
-            )
-
+            threads.append(threading.Thread(target=self._charge_for_specific_user,args=(user, data)))
+            
+        
         for thread in threads:
             thread.start()
-
+        
         for thread in threads:
             thread.join()
 
@@ -220,7 +220,7 @@ class TestView(TestAPI):
         for user in self.users:
             threads.append(
                 threading.Thread(
-                    target=self._buy_for_specific_user(user, data), name="t1")
+                    target=self._buy_for_specific_user, args=(user, data))
             )
 
         for thread in threads:
@@ -252,7 +252,7 @@ class TestView(TestAPI):
             }
             threads.append(
                 threading.Thread(
-                    target=self._buy_for_specific_user(user, data), name="t1")
+                    target=self._buy_for_specific_user, args=(user, data))
             )
 
         for thread in threads:
@@ -269,7 +269,7 @@ class TestView(TestAPI):
         for user in self.users:
             threads.append(
                 threading.Thread(
-                    target=self._get_balance_for_specific_user(user), name="t1")
+                    target=self._get_balance_for_specific_user, args=(user,))
             )
 
         for thread in threads:
@@ -286,7 +286,7 @@ class TestView(TestAPI):
         for user in self.users:
             threads.append(
                 threading.Thread(
-                    target=self._charge_for_specific_user(user, data), name="t1")
+                    target=self._charge_for_specific_user, args=(user, data))
             )
 
         for thread in threads:
@@ -306,7 +306,7 @@ class TestView(TestAPI):
         for user in self.users:
             threads.append(
                 threading.Thread(
-                    target=self._buy_for_specific_user(user, data), name="t1")
+                    target=self._buy_for_specific_user, args=(user, data))
             )
 
         for thread in threads:
@@ -324,7 +324,7 @@ class TestView(TestAPI):
         for user in self.users:
             threads.append(
                 threading.Thread(
-                    target=self._get_balance_for_specific_user(user), name="t1")
+                    target=self._get_balance_for_specific_user, args=(user,))
             )
 
         for thread in threads:
@@ -345,9 +345,9 @@ class TestView(TestAPI):
             'balance': 100
         }
         t1 = threading.Thread(
-            target=self._charge_for_specific_user(this_user, data), name="t1")
+            target=self._charge_for_specific_user, args=(this_user, data))
         t2 = threading.Thread(
-            target=self._charge_for_specific_user(this_user, data), name="t1")
+            target=self._charge_for_specific_user, args=(this_user, data))
         t1.start()
         t2.start()
         t1.join()
@@ -370,11 +370,11 @@ class TestView(TestAPI):
 
         # buying and charging at the same time
         t1 = threading.Thread(
-            target=self._charge_for_specific_user(this_user, data))
+            target=self._charge_for_specific_user,args=(this_user, data))
         t2 = threading.Thread(
-            target=self._buy_for_specific_user(this_user, data))
+            target=self._buy_for_specific_user, args=(this_user, data))
         t3 = threading.Thread(
-            target=self._get_balance_for_specific_user(this_user))
+            target=self._get_balance_for_specific_user, args=(this_user,))
         t1.start()
         t2.start()
         t3.start()
@@ -398,7 +398,7 @@ class TestView(TestAPI):
         for user in self.users:
             threads.append(
                 threading.Thread(
-                    target=self._charge_for_specific_user(user, data), name="t1")
+                    target=self._charge_for_specific_user, args=(user, data))
             )
 
         for thread in threads:
@@ -418,16 +418,16 @@ class TestView(TestAPI):
         for user in self.users:
             threads.append(
                 threading.Thread(
-                    target=self._charge_for_specific_user(user, data))
+                    target=self._charge_for_specific_user, args=((user, data)))
             )
             threads.append(threading.Thread(
-                target=self._buy_for_specific_user(user, {'balance': 401.23})))
+                target=self._buy_for_specific_user, args=(user, {'balance': "401.23"})))
 
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-
+        
         purchase_instances = Purchase.objects.all()
         charge_instances = Charge.objects.all()
         wallet_instances = Wallet.objects.all()
@@ -449,25 +449,47 @@ class TestView(TestAPI):
         this_user = self.users[12]
 
         # charging
-        for i in range(100):
+        for i in range(16):
             threads.append(threading.Thread(
-                target=self._charge_for_specific_user(this_user, {'balance': 240.5})))
+                target=self._charge_for_specific_user, args=(this_user, {'balance': 240.5})))
             threads[i].start()
-        for i in range(100):
+        for i in range(16):
             threads[i].join()
         this_wallet = this_user.wallet_set.get()
 
-        self.assertEqual(this_wallet.balance, 100 * 240.5)
-        self.assertEqual(Charge.objects.count(), 100)
+        self.assertEqual(this_wallet.balance, 16 * 240.5)
+        self.assertEqual(Charge.objects.count(), 16)
 
         # buying
         threads.clear()
-        for i in range(100):
+        for i in range(16):
             threads.append(threading.Thread(
-                target=self._buy_for_specific_user(this_user, {'balance': 240.5})))
+                target=self._buy_for_specific_user, args=(this_user, {'balance': 240.5})))
             threads[i].start()
-        for i in range(100):
+        for i in range(16):
             threads[i].join()
 
-        self.assertEqual(Purchase.objects.count(), 100)
+        self.assertEqual(Purchase.objects.count(), 16)
+        self.assertEqual(this_user.wallet_set.get().balance, 0)
+    def test_multiprocessing_one_user(self):
+        this_user = self.users[0]
+
+        t1 = Process(target=self._charge_for_specific_user(this_user, {'balance' : 1000}))
+        t2 = Process(target=self._charge_for_specific_user(this_user, {'balance' : 1000}))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+        
+        self.assertEqual(Charge.objects.count(), 2)        
+        self.assertEqual(this_user.wallet_set.get().balance, 2000)
+
+        t1 = Process(target=self._buy_for_specific_user(this_user, {'balance' : 1000}))
+        t2 = Process(target=self._buy_for_specific_user(this_user, {'balance' : 1000}))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        self.assertEqual(Purchase.objects.count(), 2)        
         self.assertEqual(this_user.wallet_set.get().balance, 0)
