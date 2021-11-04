@@ -474,8 +474,8 @@ class TestView(TestAPI):
     def test_multiprocessing_one_user(self):
         this_user = self.users[0]
 
-        t1 = Process(target=self._charge_for_specific_user(this_user, {'balance' : 1000}))
-        t2 = Process(target=self._charge_for_specific_user(this_user, {'balance' : 1000}))
+        t1 = Process(target=self._charge_for_specific_user, args=(this_user, {'balance' : 1000}))
+        t2 = Process(target=self._charge_for_specific_user, args=(this_user, {'balance' : 1000}))
         t1.start()
         t2.start()
         t1.join()
