@@ -5,7 +5,7 @@ import random
 import threading
 from multiprocessing import Process
 from django.db import transaction
-
+from django import db
 class TestView(TestAPI):
     def test_regular_buy_charge_getBalance(self):
         this_url = self.get_buy_url(self.wallets[0])
@@ -428,6 +428,7 @@ class TestView(TestAPI):
         for thread in threads:
             thread.join()
         
+       
         purchase_instances = Purchase.objects.all()
         charge_instances = Charge.objects.all()
         wallet_instances = Wallet.objects.all()
@@ -471,7 +472,9 @@ class TestView(TestAPI):
 
         self.assertEqual(Purchase.objects.count(), 16)
         self.assertEqual(this_user.wallet_set.get().balance, 0)
+    
     def test_multiprocessing_one_user(self):
+        db.connections.close_all()
         this_user = self.users[0]
 
         t1 = Process(target=self._charge_for_specific_user, args=(this_user, {'balance' : 1000}))

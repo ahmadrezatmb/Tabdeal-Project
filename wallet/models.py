@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
-
+from django.db.models import F
 
 class Wallet(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -12,8 +12,10 @@ class Wallet(models.Model):
         return f'{self.owner}\'s wallet'
 
     def add_balance(self, amount):
-        self.balance = self.balance + amount
-        return self.save()
+        self.balance = F('balance') + amount
+        self.save()
+        return self.refresh_from_db()
+        
 
     def new_charge(self, amount):
         self.add_balance(amount)
