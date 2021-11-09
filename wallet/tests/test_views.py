@@ -21,6 +21,8 @@ class TestView(TestAPI):
         res = self.client.post(this_url, data, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         this_wallet = Wallet.objects.get(id=self.wallets[0].id)
+        import pdb
+        pdb.set_trace()
         self.assertEqual(this_wallet.balance, 100)
         this_wallet_charge_instances = Charge.objects.filter(
             wallet=this_wallet)
