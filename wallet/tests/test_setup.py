@@ -13,7 +13,7 @@ class TestAPI(TransactionTestCase):
         self.users = []
         self.wallets = []
         self.faker = Faker()
-        self.user_counts = 50
+        self.user_counts = 200
         for i in range(self.user_counts):
             new_user = User.objects.create(
                 username=self.faker.email() + str(i), password="1234")

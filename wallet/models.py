@@ -12,7 +12,7 @@ class Wallet(models.Model):
         return f'{self.owner}\'s wallet'
 
     def add_balance(self, amount):
-        self.balance = self.balance + amount
+        self.balance = F('balance') + amount
         self.save(update_fields=["balance"])
         return self.refresh_from_db()
         
